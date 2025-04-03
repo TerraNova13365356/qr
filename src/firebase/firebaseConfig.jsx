@@ -3,13 +3,13 @@ import { getDatabase, ref, get, set, onValue,update } from "firebase/database";
 import { getAuth, GoogleAuthProvider, FacebookAuthProvider } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDwUtdCi1Wz-meVdKagFZ2OXLyxAUsUiAc",
-  authDomain: "code-box-ee11f.firebaseapp.com",
-  databaseURL: "https://code-box-ee11f-default-rtdb.firebaseio.com",
-  projectId: "code-box-ee11f",
-  storageBucket: "code-box-ee11f.appspot.com",
-  messagingSenderId: "956121181787",
-  appId: "1:956121181787:web:7e2126bd435a4ad871597e"
+  apiKey: "AIzaSyAdjapx1TbwAW1Cv5W-SHHKWcx8RmaGius",
+  authDomain: "scan-inn-568d0.firebaseapp.com",
+  projectId: "scan-inn-568d0",
+  storageBucket: "scan-inn-568d0.firebasestorage.app",
+  messagingSenderId: "370193814199",
+  appId: "1:370193814199:web:49e5844dbc0ca32fac7332",
+  measurementId: "G-79QW7LWPS5"
 };
 
 const app = initializeApp(firebaseConfig);
