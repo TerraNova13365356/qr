@@ -19,7 +19,7 @@ const TeacherPage = () => {
     error: null
   });
 
-  let teacherId = "DNFEFO23JND";
+  let teacherId = localStorage.getItem("userid");
 
 
   useEffect(() => {

@@ -10,23 +10,28 @@ function AuthPage() {
     const [password, setPassword] = useState("");
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
+     
     const navigate = useNavigate();
-
+    let userid=""
     const handleAuth = async (e) => {
         e.preventDefault();
         setLoading(true);
         try {
+            localStorage.setItem("user",email)
             if (isSignup) {
-                await createUserWithEmailAndPassword(auth, email, password);
+               userid= await createUserWithEmailAndPassword(auth, email, password);
+               
             } else {
-                await signInWithEmailAndPassword(auth, email, password);
+               userid= await signInWithEmailAndPassword(auth, email, password);
             }
             if (email.includes("@stud")) {
-                navigate("/student");
+                localStorage.setItem("userid",userid.user.uid)
+                navigate("/Student");
             } else if (email.includes("@fac")) {
-                navigate("/teacher");
+                localStorage.setItem("userid",userid.user.uid)
+                navigate("/Faculty");
             } else {
-                navigate("/dashboard");
+                navigate("*");
             }
         } catch (err) {
             setError(err.message);
@@ -35,16 +40,20 @@ function AuthPage() {
     };
 
     const handleGoogleLogin = async () => {
+        
         setLoading(true);
         try {
+            localStorage.setItem("user",email)
             const result = await signInWithPopup(auth, googleProvider);
             const userEmail = result.user.email;
             if (userEmail.includes("@stud")) {
-                navigate("/student");
+                localStorage.setItem("userid",userid.user.uid)
+                navigate("/Student");
             } else if (userEmail.includes("@fac")) {
-                navigate("/teacher");
+                localStorage.setItem("userid",userid.user.uid)
+                navigate("/Faculty");
             } else {
-                navigate("/dashboard");
+                navigate("*");
             }
         } catch (err) {
             setError(err.message);
@@ -52,23 +61,7 @@ function AuthPage() {
         }
     };
 
-    const handleFacebookLogin = async () => {
-        setLoading(true);
-        try {
-            const result = await signInWithPopup(auth, facebookProvider);
-            const userEmail = result.user.email;
-            if (userEmail.includes("@stud")) {
-                navigate("/student");
-            } else if (userEmail.includes("@fac")) {
-                navigate("/teacher");
-            } else {
-                navigate("/dashboard");
-            }
-        } catch (err) {
-            setError(err.message);
-            setLoading(false);
-        }
-    };
+     
 
     return (
         <div className="min-h-screen bg-white p-6 flex flex-col items-center justify-center">
@@ -98,7 +91,7 @@ function AuthPage() {
                     </div>
                     <div className="mt-4 flex justify-center space-x-4">
                         <button onClick={handleGoogleLogin} className="w-28 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition">Google</button>
-                        <button onClick={handleFacebookLogin} className="w-28 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Facebook</button>
+                         
                     </div>
                 </div>
             </div>

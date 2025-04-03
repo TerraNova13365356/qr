@@ -21,10 +21,7 @@ const StudentAttendanceDashboard = () => {
   const scannerRef = useRef(null);
   const scannerDivRef = useRef(null);
 
-  const studentId =
-    localStorage.getItem("studentId") ||
-    sessionStorage.getItem("studentId") ||
-    "S2023501";
+  const studentId = localStorage.getItem("userid")
 
   useEffect(() => {
     const fetchStudentData = async () => {
@@ -151,7 +148,51 @@ const StudentAttendanceDashboard = () => {
           const attendanceData = attendanceSnapshot.val();
           const lastTime = qrData.time;
           const currentTime = new Date().toLocaleTimeString();
-
+          const lat_qr_location=qrData.location.latitude;
+          const long_qr_location=qrData.location.longitude;
+          console.log(lat_qr_location);
+          
+          function isUserInClass(lat_qr_location, long_qr_location) {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((position) => {
+                    const userLat = position.coords.latitude;
+                    const userLon = position.coords.longitude;
+        
+                    const distance = getDistanceFromLatLonInKm(userLat, userLon, lat_qr_location, long_qr_location);
+                    
+                    if (distance <= 0.5) {
+                        console.log("User is within the class (500m range).");
+                    } else {
+                        console.log("User is outside the class (more than 500m away).");
+                    }
+                }, (error) => {
+                    console.error("Error getting location:", error);
+                });
+            } else {
+                console.error("Geolocation is not supported by this browser.");
+            }
+        }
+        
+        function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Radius of the Earth in km
+            const dLat = toRad(lat2 - lat1);
+            const dLon = toRad(lon2 - lon1);
+            
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                      
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c; // Distance in km
+        }
+        
+        function toRad(degrees) {
+            return degrees * (Math.PI / 180);
+        }
+        
+        
+        
+        
           const parseTimeStringToTimestamp = (timeStr) => {
             const [hours, minutes, seconds] = timeStr.split(":").map(Number);
             const now = new Date();
@@ -168,7 +209,7 @@ const StudentAttendanceDashboard = () => {
            
           console.log((timeDifference));
           
-          if (timeDifference > 5) {
+          if (timeDifference > 5 && isUserInClass(lat_qr_location, long_qr_location)) {
             toast.info("QR code has expired (more than 5 minutes old)");
           } else {
             // Update teacher's attendance record
@@ -228,7 +269,7 @@ const StudentAttendanceDashboard = () => {
             {studentData ? (
               <div className="text-center mb-6">
                 <h1 className="text-2xl font-bold text-gray-800">
-                  {studentData.name}
+                  {localStorage.getItem("user")}
                 </h1>
                 <p className="text-gray-500">
                   ID: {studentId} • {studentData.program}
@@ -239,7 +280,7 @@ const StudentAttendanceDashboard = () => {
               </div>
             ) : (
               <p className="text-center text-red-500">
-                Student profile not found. Please contact your administrator.
+               No Attendence Report Found.Scan Qr Code
               </p>
             )}
 
