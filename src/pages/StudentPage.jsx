@@ -1,12 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Html5QrcodeScanner } from "html5-qrcode";
-import {
-  ref,
-  get,
-  update,
-  onValue,
-  set,
-} from "firebase/database";
+import { ref, get, update, onValue, set } from "firebase/database";
 import { db } from "../firebase/firebaseConfig";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -21,7 +15,7 @@ const StudentAttendanceDashboard = () => {
   const scannerRef = useRef(null);
   const scannerDivRef = useRef(null);
 
-  const studentId = localStorage.getItem("userid")
+  const studentId = localStorage.getItem("userid");
 
   useEffect(() => {
     const fetchStudentData = async () => {
@@ -53,19 +47,27 @@ const StudentAttendanceDashboard = () => {
           const history = historySnapshot.val();
           // Flatten all attendance records from different courses
           const historyArray = Object.entries(history)
-            .flatMap(([course, sessions]) => 
+            .flatMap(([course, sessions]) =>
               Object.entries(sessions).map(([sessionId, data]) => ({
                 id: sessionId,
                 course,
                 ...data,
               }))
             )
-            .sort((a, b) => new Date(b.timestamp || b.date) - new Date(a.timestamp || a.date));
+            .sort(
+              (a, b) =>
+                new Date(b.timestamp || b.date) -
+                new Date(a.timestamp || a.date)
+            );
 
           setAttendanceHistory(historyArray);
           if (historyArray.length > 0) {
             const lastAttendance = historyArray[0];
-            setLastScan(new Date(lastAttendance.timestamp || lastAttendance.date).toLocaleString());
+            setLastScan(
+              new Date(
+                lastAttendance.timestamp || lastAttendance.date
+              ).toLocaleString()
+            );
           }
         }
 
@@ -83,7 +85,7 @@ const StudentAttendanceDashboard = () => {
   useEffect(() => {
     return () => {
       if (scannerRef.current) {
-        scannerRef.current.clear().catch(error => {
+        scannerRef.current.clear().catch((error) => {
           console.error("Failed to clear scanner:", error);
         });
       }
@@ -136,63 +138,73 @@ const StudentAttendanceDashboard = () => {
       if (qrSnapshot.exists()) {
         const qrData = qrSnapshot.val();
         console.log(qrData);
-        
+
         const attendanceRef = ref(
           db,
-          `Teacher/${qrData.teacherId}/${qrData.class}/${qrData.period}/attendance/${qrData.sessionId}`
+          `Teacher/${qrData.teacherId}/${qrData.class}/${qrData.period}/attendance/${qrData.sessionId}/details`
         );
         const attendanceSnapshot = await get(attendanceRef);
         console.log(attendanceSnapshot.val());
-        
+
         if (attendanceSnapshot.exists()) {
           const attendanceData = attendanceSnapshot.val();
           const lastTime = qrData.time;
           const currentTime = new Date().toLocaleTimeString();
-          const lat_qr_location=qrData.location.latitude;
-          const long_qr_location=qrData.location.longitude;
+          const lat_qr_location = qrData.location.latitude;
+          const long_qr_location = qrData.location.longitude;
           console.log(lat_qr_location);
-          
+
           function isUserInClass(lat_qr_location, long_qr_location) {
             if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition((position) => {
-                    const userLat = position.coords.latitude;
-                    const userLon = position.coords.longitude;
-        
-                    const distance = getDistanceFromLatLonInKm(userLat, userLon, lat_qr_location, long_qr_location);
-                    
-                    if (distance <= 0.5) {
-                        console.log("User is within the class (500m range).");
-                    } else {
-                        console.log("User is outside the class (more than 500m away).");
-                    }
-                }, (error) => {
-                    console.error("Error getting location:", error);
-                });
+              navigator.geolocation.getCurrentPosition(
+                (position) => {
+                  const userLat = position.coords.latitude;
+                  const userLon = position.coords.longitude;
+
+                  const distance = getDistanceFromLatLonInKm(
+                    userLat,
+                    userLon,
+                    lat_qr_location,
+                    long_qr_location
+                  );
+
+                  if (distance <= 0.5) {
+                    console.log("User is within the class (500m range).");
+                  } else {
+                    console.log(
+                      "User is outside the class (more than 500m away)."
+                    );
+                  }
+                },
+                (error) => {
+                  console.error("Error getting location:", error);
+                }
+              );
             } else {
-                console.error("Geolocation is not supported by this browser.");
+              console.error("Geolocation is not supported by this browser.");
             }
-        }
-        
-        function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+          }
+
+          function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
             const R = 6371; // Radius of the Earth in km
             const dLat = toRad(lat2 - lat1);
             const dLon = toRad(lon2 - lon1);
-            
-            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-                      
+
+            const a =
+              Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(toRad(lat1)) *
+                Math.cos(toRad(lat2)) *
+                Math.sin(dLon / 2) *
+                Math.sin(dLon / 2);
+
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
             return R * c; // Distance in km
-        }
-        
-        function toRad(degrees) {
+          }
+
+          function toRad(degrees) {
             return degrees * (Math.PI / 180);
-        }
-        
-        
-        
-        
+          }
+
           const parseTimeStringToTimestamp = (timeStr) => {
             const [hours, minutes, seconds] = timeStr.split(":").map(Number);
             const now = new Date();
@@ -204,18 +216,38 @@ const StudentAttendanceDashboard = () => {
           const timestamp2 = parseTimeStringToTimestamp(currentTime);
 
           const timeDifference = Math.abs(timestamp1 - timestamp2) / 60000;
-          
+
           // Calculate time difference in minutes
-           
-          console.log((timeDifference));
-          
-          if (timeDifference > 5 && isUserInClass(lat_qr_location, long_qr_location)) {
+
+          console.log(timeDifference);
+
+          if (
+            timeDifference > 5 &&
+            !isUserInClass(lat_qr_location, long_qr_location)
+          ) {
             toast.info("QR code has expired (more than 5 minutes old)");
           } else {
             // Update teacher's attendance record
             await update(attendanceRef, {
               attendance_marked: (attendanceData.attendance_marked || 0) + 1,
             });
+            const userEmail = localStorage.getItem("user");
+            const username = userEmail ? userEmail.split("@")[0] : "";
+
+            console.log(username); // Output: Everything before @
+            await set(
+              ref(
+                db,
+                `Teacher/${qrData.teacherId}/${qrData.class}/${
+                  qrData.period
+                }/attendance/${
+                  qrData.sessionId
+                }/marked_students/${username}`
+              ),
+              {
+                studid: localStorage.getItem("userid"),
+              }
+            );
 
             // Update student's attendance record
             const studentAttendanceRef = ref(
@@ -229,7 +261,7 @@ const StudentAttendanceDashboard = () => {
               class: qrData.class,
               period: qrData.period,
               teacherId: qrData.teacherId,
-              sessionId: qrData.sessionId
+              sessionId: qrData.sessionId,
             });
 
             toast.success("Attendance marked successfully!");
@@ -249,7 +281,7 @@ const StudentAttendanceDashboard = () => {
 
   const cancelScanning = () => {
     if (scannerRef.current) {
-      scannerRef.current.clear().catch(error => {
+      scannerRef.current.clear().catch((error) => {
         console.error("Failed to clear scanner:", error);
       });
       scannerRef.current = null;
@@ -275,12 +307,14 @@ const StudentAttendanceDashboard = () => {
                   ID: {studentId} • {studentData.program}
                 </p>
                 <p className="text-sm text-gray-600 mt-1">
-                  {lastScan ? `Last attendance: ${lastScan}` : "No recent attendance recorded"}
+                  {lastScan
+                    ? `Last attendance: ${lastScan}`
+                    : "No recent attendance recorded"}
                 </p>
               </div>
             ) : (
               <p className="text-center text-red-500">
-               No Attendence Report Found.Scan Qr Code
+                No Attendence Report Found.Scan Qr Code
               </p>
             )}
 
@@ -295,8 +329,8 @@ const StudentAttendanceDashboard = () => {
               ) : (
                 <div className="w-full flex flex-col items-center">
                   <div id="qr-reader" className="w-full max-w-sm"></div>
-                  <button 
-                    onClick={cancelScanning} 
+                  <button
+                    onClick={cancelScanning}
                     className="mt-4 bg-gray-200 text-gray-700 px-5 py-2 rounded-lg hover:bg-gray-300"
                   >
                     Cancel
@@ -307,7 +341,9 @@ const StudentAttendanceDashboard = () => {
 
             {attendanceHistory.length > 0 && (
               <div className="mt-8">
-                <h2 className="text-xl font-semibold mb-4">Attendance History</h2>
+                <h2 className="text-xl font-semibold mb-4">
+                  Attendance History
+                </h2>
                 <div className="overflow-x-auto">
                   <table className="min-w-full bg-white">
                     <thead>
@@ -322,11 +358,19 @@ const StudentAttendanceDashboard = () => {
                       {attendanceHistory.slice(0, 5).map((record) => (
                         <tr key={record.id}>
                           <td className="py-2 px-4 border-b text-center">
-                            {new Date(record.timestamp || record.date).toLocaleString()}
+                            {new Date(
+                              record.timestamp || record.date
+                            ).toLocaleString()}
                           </td>
-                          <td className="py-2 px-4 border-b text-center">{record.class || record.course}</td>
-                          <td className="py-2 px-4 border-b text-center">{record.period}</td>
-                          <td className="py-2 px-4 border-b text-center">{record.status}</td>
+                          <td className="py-2 px-4 border-b text-center">
+                            {record.class || record.course}
+                          </td>
+                          <td className="py-2 px-4 border-b text-center">
+                            {record.period}
+                          </td>
+                          <td className="py-2 px-4 border-b text-center">
+                            {record.status}
+                          </td>
                         </tr>
                       ))}
                     </tbody>

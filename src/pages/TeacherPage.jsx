@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { db } from "../firebase/firebaseConfig";
 import { ref, set, get, push, onValue } from "firebase/database";
 import QRCodeGenerator from "../components/teacher/GenerateQR";
+import { data } from "react-router-dom";
 
 const TeacherPage = () => {
   const [teacherClass, setTeacherClass] = useState("");
@@ -18,6 +19,9 @@ const TeacherPage = () => {
     longitude: null,
     error: null
   });
+  const [markedAttendance, setMarkedAttendance] = useState({});
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedSession, setSelectedSession] = useState(null);
 
   let teacherId = localStorage.getItem("userid");
 
@@ -87,7 +91,7 @@ const TeacherPage = () => {
   };
 
   const storeAttendance = async (newSessionId, totalStudents) => {
-    const attendancePath = `Teacher/${teacherId}/${teacherClass}/${selectedPeriod}/attendance/${newSessionId}`;
+    const attendancePath = `Teacher/${teacherId}/${teacherClass}/${selectedPeriod}/attendance/${newSessionId}/details`;
     const currentDate = new Date().toISOString().split("T")[0];
 
     await set(ref(db, attendancePath), {
@@ -105,40 +109,60 @@ const TeacherPage = () => {
 
     const unsubscribe = onValue(attendanceRef, (snapshot) => {
       if (snapshot.exists()) {
-        const data = parseAttendanceData(snapshot.val());
-        setAttendanceDetails(data);
-        setSortedData(sortAttendance(data, sortByCourse, sortByPeriod));
+        const data = snapshot.val();
+        setAttendanceDetails(parseAttendanceData(data));
+        setMarkedAttendance(parseMarkedStudents(data));
       }
     });
 
     return () => unsubscribe();
-  }, [sessionId, teacherClass, selectedPeriod, sortByCourse, sortByPeriod]);
+  }, []);
 
   const parseAttendanceData = (data) => {
-    return Object.entries(data)
-      .flatMap(([classKey, periods]) =>
-        Object.entries(periods).flatMap(([periodKey, attendanceObj]) =>
-          Object.entries(attendanceObj.attendance || {}).map(([id, record]) => ({
-            course: record.course,
-            period: parseInt(record.period),
-            date: record.date,
-            attendance_marked: record.attendance_marked,
-            total_students: record.total_students,
-          }))
-        )
-      );
+    return Object.entries(data).flatMap(([classKey, periods]) =>
+      Object.entries(periods).flatMap(([periodKey, attendanceObj]) => {
+        if (!attendanceObj.attendance) return [];
+        return Object.entries(attendanceObj.attendance).map(([sessionId, attendance]) => ({
+          sessionId,
+          course: attendance.details.course || "Unknown",
+          period: parseInt(attendance.details.period, 10) || 0,
+          date: attendance.details.date || "N/A",
+          attendance_marked: attendance.details.attendance_marked || 0,
+          total_students: attendance.details.total_students || 0,
+        }));
+      })
+    );
   };
 
-  const sortAttendance = (data, byCourse, byPeriod) => {
-    return [...data].sort((a, b) => {
-      if (byCourse && byPeriod) {
-        if (a.course === b.course) return a.period - b.period;
-        return a.course.localeCompare(b.course);
-      }
-      if (byCourse) return a.course.localeCompare(b.course);
-      if (byPeriod) return a.period - b.period;
-      return 0;
+  const parseMarkedStudents = (data) => {
+    let markedData = {};
+
+    Object.entries(data).forEach(([classKey, periods]) => {
+      Object.entries(periods).forEach(([periodKey, attendanceObj]) => {
+        if (!attendanceObj.attendance) return;
+        Object.entries(attendanceObj.attendance).forEach(([sessionId, attendance]) => {
+          if (!attendance.marked_students) return;
+          markedData[sessionId] = Object.entries(attendance.marked_students).map(([studentId, record]) => ({
+            studentId:studentId,
+            status: record.status || "Present",
+          }));
+        });
+      });
     });
+    console.log(markedData);
+    
+    
+    return markedData;
+  };
+
+  const openModal = (sessionId) => {
+    setSelectedSession(sessionId);
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setSelectedSession(null);
   };
 
   return (
@@ -218,7 +242,7 @@ const TeacherPage = () => {
         )}
 
         {/* Attendance Table */}
-        {sortedData.length > 0 && (
+        {attendanceDetails.length > 0 && (
           <div className="mt-6">
             <h3 className="text-lg font-bold text-center">Attendance Records</h3>
             <table className="min-w-full bg-white border border-gray-300 shadow-md rounded-lg">
@@ -232,12 +256,22 @@ const TeacherPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {sortedData.map((record, index) => (
+                {attendanceDetails.map((record, index) => (
                   <tr key={index} className="text-center border">
                     <td className="py-2 px-4 border">{record.course}</td>
                     <td className="py-2 px-4 border">{record.period}</td>
                     <td className="py-2 px-4 border">{record.date}</td>
-                    <td className="py-2 px-4 border">{record.attendance_marked}</td>
+
+                    {/* Button to Open Popup */}
+                    <td className="py-2 px-4 border">
+                      <button
+                        onClick={() => openModal(record.sessionId)}
+                        className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-700"
+                      >
+                        {record.attendance_marked}
+                      </button>
+                    </td>
+
                     <td className="py-2 px-4 border">{record.total_students}</td>
                   </tr>
                 ))}
@@ -246,6 +280,37 @@ const TeacherPage = () => {
           </div>
         )}
       </div>
+
+      {/* Modal (Popup) Window */}
+      {modalOpen && selectedSession && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+            <h2 className="text-xl font-bold mb-4">Marked Attendance</h2>
+
+            {markedAttendance[selectedSession]?.length > 0 ? (
+              <ul className="max-h-60 overflow-y-auto">
+                {markedAttendance[selectedSession].map((student, idx) => (
+                  
+                  <li key={idx} className="p-2 border-b">
+                    {student.studentId} - {student.status}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No students marked</p>
+            )}
+
+            <button
+              onClick={closeModal}
+              className="mt-4 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-700"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+      
+       
     </div>
   );
 };
